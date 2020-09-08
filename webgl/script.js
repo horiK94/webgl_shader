@@ -28,28 +28,41 @@ onload = () => {
     attributeStride[0] = 3;
     attributeStride[1] = 4;
 
-    const index_
-
     //モデルデータ
     var vertex_position = [
         // X,   Y,   Z
          0.0, 1.0, 0.0,
          1.0, 0.0, 0.0,
-        -1.0, 0.0, 0.0
+        -1.0, 0.0, 0.0,
+        0.0, -1.0,  0.0
     ];
 
     // 頂点の色情報を格納する配列
     var vertex_color = [
         1.0, 0.0, 0.0, 1.0,
         0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0
+        0.0, 0.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0
+    ];
+
+    // 頂点のインデックスを格納する配列
+    var index = [
+        0, 1, 2,
+        1, 2, 3
     ];
 
     //vboの生成(配列化からvboの生成)
     const pos_vbo = create_vbo(vertex_position);
     const color_vbo = create_vbo(vertex_color);
 
+    //vboの登録
     set_attribute([pos_vbo, color_vbo], attributeLocation, attributeStride);
+
+    //iboの作成
+    const ibo = create_ibo(index);
+
+    //iboをバインドして登録(attributeは使用しないので有効・登録は不要)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
 
     //uniformLocationの取得
     const uniLocation = gl.getUniformLocation(prg, "mvpMatrix");
@@ -102,30 +115,41 @@ onload = () => {
         //座標変換行列を求める
         m.multiply(tmpMatrix, mMaterix, mvpMatrix);
         gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        //頂点座標をもとに描画
+        // gl.drawArrays(gl.TRIANGLES, 0, 3);
+        //indexをもとに描画
+        /*
+        void gl.drawElements(mode, count, type, offset);
+        mode: レンダリングする型
+        三角形をレンダリングしたいのでgl.TRIANGLES
+        count: レンダリングすされる要素の数(3つの頂点が2つなので6でも良いが、indexの要素の数を指定するだけでok)
+        type: レンダリング時に使用するインデックスバッファの型
+        offset: オフセット値
+        */
+        gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
 
-        //モデル2はY軸を中心回転(列オーダーなので位置行列が先)
-        m.identity(mMaterix);
-        //位置は(1, -1)
-        m.translate(mMaterix, [1.0, -1.0, 0.0], mMaterix);
-        //y軸を中心に回転
-        m.rotate(mMaterix, rad, [0, 1, 0], mMaterix);
+        // //モデル2はY軸を中心回転(列オーダーなので位置行列が先)
+        // m.identity(mMaterix);
+        // //位置は(1, -1)
+        // m.translate(mMaterix, [1.0, -1.0, 0.0], mMaterix);
+        // //y軸を中心に回転
+        // m.rotate(mMaterix, rad, [0, 1, 0], mMaterix);
 
-        //座標変換行列を求める
-        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        // //座標変換行列を求める
+        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+        // gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-        //モデル3は拡大縮小
-        const s = Math.sin(rad) + 1.0;
-        m.identity(mMaterix);
-        m.translate(mMaterix, [-1.0, -1.0, 0], mMaterix);
-        m.scale(mMaterix, [s, s, 0.0], mMaterix);
+        // //モデル3は拡大縮小
+        // const s = Math.sin(rad) + 1.0;
+        // m.identity(mMaterix);
+        // m.translate(mMaterix, [-1.0, -1.0, 0], mMaterix);
+        // m.scale(mMaterix, [s, s, 0.0], mMaterix);
 
-        //座標変換行列を求める
-        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        // //座標変換行列を求める
+        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+        // gl.drawArrays(gl.TRIANGLES, 0, 3);
 
 		// コンテキストの再描画
         gl.flush();
@@ -289,7 +313,7 @@ create_ibo = (data) => {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Int16Array(data), gl.STATIC_DRAW);
 
     //バインド無効化
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER. null);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
     return ibo;
 }
