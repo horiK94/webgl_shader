@@ -92,6 +92,13 @@ onload = () => {
     m.lookAt([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
     m.perspective(45, c.width / c.height, 0.1, 100, pMaterix);      //プロジェクション変換行列
     m.multiply(pMaterix, vMaterix, tmpMatrix);      //プロジェクション変換行列×ビュー変換行列をtmpに保存
+
+    //カリングの設定
+    gl.enable(gl.CULL_FACE);
+    //深度テストの設定
+    gl.enable(gl.DEPTH_TEST);
+    //深度テストの比較方法の設定
+    gl.depthFunc(gl.LEQUAL);
     
     (function(){
         // canvasを黒でクリア(初期化)する
@@ -126,6 +133,17 @@ onload = () => {
         type: レンダリング時に使用するインデックスバッファの型
         offset: オフセット値
         */
+        gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
+
+        //モデル1は(0, 1)を中心とした円軌道の移動
+        const x2 = Math.cos(2.0 * Math.PI - rad);
+        const y2 = Math.sin(2.0 * Math.PI - rad);
+        m.identity(mMaterix);           //mMatrixを単位行列に
+        m.translate(mMaterix, [x2, y2 + 1.0, -0.1], mMaterix);
+
+        //座標変換行列を求める
+        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
         gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
 
         // //モデル2はY軸を中心回転(列オーダーなので位置行列が先)
