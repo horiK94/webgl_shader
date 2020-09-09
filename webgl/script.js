@@ -28,28 +28,35 @@ onload = () => {
     attributeStride[0] = 3;
     attributeStride[1] = 4;
 
-    //モデルデータ
-    var vertex_position = [
-        // X,   Y,   Z
-         0.0, 1.0, 0.0,
-         1.0, 0.0, 0.0,
-        -1.0, 0.0, 0.0,
-        0.0, -1.0,  0.0
-    ];
+    // //モデルデータ
+    // var vertex_position = [
+    //     // X,   Y,   Z
+    //      0.0, 1.0, 0.0,
+    //      1.0, 0.0, 0.0,
+    //     -1.0, 0.0, 0.0,
+    //     0.0, -1.0,  0.0
+    // ];
 
-    // 頂点の色情報を格納する配列
-    var vertex_color = [
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0
-    ];
+    // // 頂点の色情報を格納する配列
+    // var vertex_color = [
+    //     1.0, 0.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    //     1.0, 1.0, 1.0, 1.0
+    // ];
 
-    // 頂点のインデックスを格納する配列
-    var index = [
-        0, 1, 2,
-        1, 2, 3
-    ];
+    // // 頂点のインデックスを格納する配列
+    // var index = [
+    //     0, 1, 2,
+    //     1, 2, 3
+    // ];
+
+    	
+	// トーラスの頂点データを生成
+	var torusData = torus(100, 100, 0.5, 1.0);
+	var vertex_position = torusData[0];
+	var vertex_color = torusData[1];
+	var index = torusData[2];
 
     //vboの生成(配列化からvboの生成)
     const pos_vbo = create_vbo(vertex_position);
@@ -108,16 +115,16 @@ onload = () => {
         //画面上の色をクリアするには COLOR_BUFFER_BIT(コレで指定した色でクリアできる)
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        count++;
+        // count++;vertex_color
 
         //ラジアンを求める
-        const rad = (count % 360) * Math.PI / 180;
+        // const rad = (count % 360) * Math.PI / 180;
         
         //モデル1は(0, 1)を中心とした円軌道の移動
-        const x = Math.cos(rad);
-        const y = Math.sin(rad);
+        // const x = Math.cos(rad);
+        // const y = Math.sin(rad);
         m.identity(mMaterix);           //mMatrixを単位行列に
-        m.translate(mMaterix, [x, y + 1.0, 0.0], mMaterix);
+        // m.translate(mMaterix, [x, y + 1.0, 0.0], mMaterix);
 
         //座標変換行列を求める
         m.multiply(tmpMatrix, mMaterix, mvpMatrix);
@@ -136,15 +143,15 @@ onload = () => {
         gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
 
         //モデル1は(0, 1)を中心とした円軌道の移動
-        const x2 = Math.cos(2.0 * Math.PI - rad);
-        const y2 = Math.sin(2.0 * Math.PI - rad);
-        m.identity(mMaterix);           //mMatrixを単位行列に
-        m.translate(mMaterix, [x2, y2 + 1.0, -0.1], mMaterix);
+        // const x2 = Math.cos(2.0 * Math.PI - rad);
+        // const y2 = Math.sin(2.0 * Math.PI - rad);
+        // m.identity(mMaterix);           //mMatrixを単位行列に
+        // m.translate(mMaterix, [x2, y2 + 1.0, -0.1], mMaterix);
 
-        //座標変換行列を求める
-        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
+        // //座標変換行列を求める
+        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+        // gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
 
         // //モデル2はY軸を中心回転(列オーダーなので位置行列が先)
         // m.identity(mMaterix);
@@ -334,4 +341,58 @@ create_ibo = (data) => {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
     return ibo;
+}
+
+/*
+row: 円をいくつで構成するか
+column: パイプをどのくらい分割するか
+*/
+torus = (row, column, irad, orad) => {
+    let pos = new Array();
+    let col = new Array();
+    let idx = new Array();
+    for(let i = 0; i <= row; i++){
+        let r = Math.PI * 2 / row * i;
+        let rx = Math.cos(r);
+        let ry = Math.sin(r);
+        for(let j = 0; j <= column; j++)
+        {
+            let pr = Math.PI * 2 / column * j;
+            let tx = (rx * irad + orad) * Math.cos(pr);
+            let ty = ry * irad;
+            let tz = (rx * irad + orad) * Math.sin(pr);
+            pos.push(tx, ty, tz);
+            let tc = hsva(360/ column * j, 1, 1, 1);
+            col.push(tc[0], tc[1], tc[2], tc[3]);
+        }
+    }
+    for(let i = 0; i < row; i++)
+    {
+        for(let j = 0; j < column; j++){
+            let r = (column + 1) * i + j;
+            idx.push(r, r + column + 1, r + 1);
+            idx.push(r + column + 1, r + column + 2, r + 1);
+        }
+    }
+    return [pos, col, idx];
+};
+
+hsva = (h, s, v, a) => {
+    if(s > 1 || v > 1 || a > 1){return;}
+    var th = h % 360;
+    var i = Math.floor(th / 60);
+    var f = th / 60 - i;
+    var m = v * (1 - s);
+    var n = v * (1 - s * f);
+    var k = v * (1 - s * (1 - f));
+    var color = new Array();
+    if(!s > 0 && !s < 0){
+        color.push(v, v, v, a); 
+    } else {
+        var r = new Array(v, n, m, m, k, v);
+        var g = new Array(k, v, v, n, m, m);
+        var b = new Array(m, m, k, v, v, n);
+        color.push(r[i], g[i], b[i], a);
+    }
+    return color;
 }
