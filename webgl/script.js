@@ -19,14 +19,16 @@ onload = () => {
     const prg = create_program(v_shader, f_shader);
 
     //attributeLocationの取得
-    const attributeLocation = new Array(2);
+    const attributeLocation = new Array();
     attributeLocation[0] = gl.getAttribLocation(prg, 'position');
-    attributeLocation[1] = gl.getAttribLocation(prg, 'color');
+    attributeLocation[1] = gl.getAttribLocation(prg, 'normal');
+    attributeLocation[2] = gl.getAttribLocation(prg, 'color');
     
     //アトリビュートの要素数(今回は位置のxyzの3要素)
-    const attributeStride = new Array(2);
+    const attributeStride = new Array();
     attributeStride[0] = 3;
-    attributeStride[1] = 4;
+    attributeStride[1] = 3;
+    attributeStride[2] = 4;
 
     // //モデルデータ
     // var vertex_position = [
@@ -53,17 +55,19 @@ onload = () => {
 
     	
 	// トーラスの頂点データを生成
-	var torusData = torus(100, 100, 0.5, 1.0);
-	var vertex_position = torusData[0];
-	var vertex_color = torusData[1];
-	var index = torusData[2];
+	var torusData = torus(100, 100, 1, 2);
+    var vertex_position = torusData[0];
+    var vertex_normal = torusData[1];
+	var vertex_color = torusData[2];
+	var index = torusData[3];
 
     //vboの生成(配列化からvboの生成)
     const pos_vbo = create_vbo(vertex_position);
+    const normal_vbo = create_vbo(vertex_normal);
     const color_vbo = create_vbo(vertex_color);
 
     //vboの登録
-    set_attribute([pos_vbo, color_vbo], attributeLocation, attributeStride);
+    set_attribute([pos_vbo, normal_vbo, color_vbo], attributeLocation, attributeStride);
 
     //iboの作成
     const ibo = create_ibo(index);
@@ -72,7 +76,10 @@ onload = () => {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
 
     //uniformLocationの取得
-    const uniLocation = gl.getUniformLocation(prg, "mvpMatrix");
+    let unitLocation = new Array();
+    unitLocation[0] = gl.getUniformLocation(prg, "mvpMatrix");
+    unitLocation[1] = gl.getUniformLocation(prg, "invMatrix");
+    unitLocation[2] = gl.getUniformLocation(prg, "lightDirection");
 
     var count = 0;
 
@@ -95,10 +102,14 @@ onload = () => {
     var pMaterix = m.identity(m.create());
     var tmpMatrix = m.identity(m.create());
     var mvpMatrix = m.identity(m.create());
+    var invMatrix = m.identity(m.create());
 
-    m.lookAt([0.0, 0.0, 5.0], [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
+    m.lookAt([0.0, 0.0, 20.0], [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
     m.perspective(45, c.width / c.height, 0.1, 100, pMaterix);      //プロジェクション変換行列
     m.multiply(pMaterix, vMaterix, tmpMatrix);      //プロジェクション変換行列×ビュー変換行列をtmpに保存
+
+    //平行光源の向き
+    const lightDirection = [-0.5, 0.5, 0.5];
 
     //カリングの設定
     gl.enable(gl.CULL_FACE);
@@ -115,20 +126,27 @@ onload = () => {
         //画面上の色をクリアするには COLOR_BUFFER_BIT(コレで指定した色でクリアできる)
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // count++;vertex_color
+        count++;
 
         //ラジアンを求める
-        // const rad = (count % 360) * Math.PI / 180;
+        const rad = (count % 360) * Math.PI / 180;
         
         //モデル1は(0, 1)を中心とした円軌道の移動
         // const x = Math.cos(rad);
         // const y = Math.sin(rad);
-        m.identity(mMaterix);           //mMatrixを単位行列に
+        // m.identity(mMaterix);           //mMatrixを単位行列に
         // m.translate(mMaterix, [x, y + 1.0, 0.0], mMaterix);
 
-        //座標変換行列を求める
+        m.identity(mMaterix);
+        //(0, 1, 1)軸を中心に回転
+        m.rotate(mMaterix, rad, [0, 1, 1], mMaterix);
         m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
+
+        m.inverse(mMaterix, invMatrix);
+        //座標変換行列を求める
+        gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
+        gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
+        gl.uniform3fv(unitLocation[2], lightDirection);
         //頂点座標をもとに描画
         // gl.drawArrays(gl.TRIANGLES, 0, 3);
         //indexをもとに描画
@@ -349,19 +367,23 @@ column: パイプをどのくらい分割するか
 */
 torus = (row, column, irad, orad) => {
     let pos = new Array();
+    let nor = new Array();
     let col = new Array();
     let idx = new Array();
     for(let i = 0; i <= row; i++){
         let r = Math.PI * 2 / row * i;
-        let rx = Math.cos(r);
+        let rr = Math.cos(r);
         let ry = Math.sin(r);
         for(let j = 0; j <= column; j++)
         {
             let pr = Math.PI * 2 / column * j;
-            let tx = (rx * irad + orad) * Math.cos(pr);
+            let tx = (rr * irad + orad) * Math.cos(pr);
             let ty = ry * irad;
-            let tz = (rx * irad + orad) * Math.sin(pr);
+            let tz = (rr * irad + orad) * Math.sin(pr);
+            let rx = rr * Math.cos(pr);
+            let rz = rr * Math.sin(pr);
             pos.push(tx, ty, tz);
+            nor.push(rx, ry, rz);
             let tc = hsva(360/ column * j, 1, 1, 1);
             col.push(tc[0], tc[1], tc[2], tc[3]);
         }
@@ -374,7 +396,7 @@ torus = (row, column, irad, orad) => {
             idx.push(r + column + 1, r + column + 2, r + 1);
         }
     }
-    return [pos, col, idx];
+    return [pos, nor, col, idx];
 };
 
 hsva = (h, s, v, a) => {
