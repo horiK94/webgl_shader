@@ -18,6 +18,7 @@ uniform vec3 lightDirection;        // ライトの向き(光の向き)
 void main(void){
     vec3 invLight = normalize(invMatrix * vec4(lightDirection, 0)).xyz;        //光の方向はどの位置に対しても
     float diffuse = clamp(dot(normal, invLight), 0.1, 1.0);
+    //aを0にすると、アルファブレンディング無効時は白に近づく(全体が真っ白になってしまう)
     vColor = color * vec4(vec3(diffuse), 1.0);
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }

@@ -14,7 +14,6 @@ onload = () => {
     const v_shader = create_shader('vshader');
     const f_shader = create_shader('fshader');
 
-    console.log(f_shader)
     //プログラムオブジェクトの生成とリンク
     const prg = create_program(v_shader, f_shader);
 
