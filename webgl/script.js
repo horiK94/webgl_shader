@@ -80,6 +80,7 @@ onload = () => {
     unitLocation[1] = gl.getUniformLocation(prg, "invMatrix");
     unitLocation[2] = gl.getUniformLocation(prg, "lightDirection");
     unitLocation[3] = gl.getUniformLocation(prg, "ambientColor");
+    unitLocation[4] = gl.getUniformLocation(prg, "eyeDirection");
 
     var count = 0;
 
@@ -104,7 +105,10 @@ onload = () => {
     var mvpMatrix = m.identity(m.create());
     var invMatrix = m.identity(m.create());
 
-    m.lookAt([0.0, 0.0, 20.0], [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
+    //目線ベクトル
+    const eyeDireciyon = [0.0, 0.0, 20.0];
+
+    m.lookAt(eyeDireciyon, [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
     m.perspective(45, c.width / c.height, 0.1, 100, pMaterix);      //プロジェクション変換行列
     m.multiply(pMaterix, vMaterix, tmpMatrix);      //プロジェクション変換行列×ビュー変換行列をtmpに保存
 
@@ -150,7 +154,8 @@ onload = () => {
         gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
         gl.uniform3fv(unitLocation[2], lightDirection);
-        gl.uniform4fv(unitLocation[3], ambientColor)
+        gl.uniform4fv(unitLocation[3], ambientColor);
+        gl.uniform3fv(unitLocation[4], eyeDireciyon);
         //頂点座標をもとに描画
         // gl.drawArrays(gl.TRIANGLES, 0, 3);
         //indexをもとに描画
