@@ -79,6 +79,7 @@ onload = () => {
     unitLocation[0] = gl.getUniformLocation(prg, "mvpMatrix");
     unitLocation[1] = gl.getUniformLocation(prg, "invMatrix");
     unitLocation[2] = gl.getUniformLocation(prg, "lightDirection");
+    unitLocation[3] = gl.getUniformLocation(prg, "ambientColor");
 
     var count = 0;
 
@@ -109,6 +110,9 @@ onload = () => {
 
     //平行光源の向き
     const lightDirection = [-0.5, 0.5, 0.5];
+
+    //環境光の色
+    const ambientColor = [0.1, 0.1, 0.1, 1.0];
 
     //カリングの設定
     gl.enable(gl.CULL_FACE);
@@ -146,6 +150,7 @@ onload = () => {
         gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
         gl.uniform3fv(unitLocation[2], lightDirection);
+        gl.uniform4fv(unitLocation[3], ambientColor)
         //頂点座標をもとに描画
         // gl.drawArrays(gl.TRIANGLES, 0, 3);
         //indexをもとに描画

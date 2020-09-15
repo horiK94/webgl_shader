@@ -14,12 +14,13 @@ varying vec4 vColor;
 uniform mat4 mvpMatrix;
 uniform mat4 invMatrix;     //モデル変換行列の逆行列
 uniform vec3 lightDirection;        // ライトの向き(光の向き)
+uniform vec4 ambientColor;      //環境光
 
 void main(void){
     vec3 invLight = normalize(invMatrix * vec4(lightDirection, 0)).xyz;        //光の方向はどの位置に対しても
-    float diffuse = clamp(dot(normal, invLight), 0.1, 1.0);
+    float diffuse = clamp(dot(normal, invLight), 0.0, 1.0);
     //aを0にすると、アルファブレンディング無効時は白に近づく(全体が真っ白になってしまう)
-    vColor = color * vec4(vec3(diffuse), 1.0);
+    vColor = color * vec4(vec3(diffuse), 1.0) + ambientColor;
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }
     </script>
