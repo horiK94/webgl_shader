@@ -3,7 +3,7 @@ let gl;
 onload = () => {
     // canvasエレメントを取得
     var c = document.getElementById('canvas');
-    c.width = 300;
+    c.width = 500;
     c.height = 300;
 
     // webglコンテキストを取得
@@ -29,70 +29,45 @@ onload = () => {
     attributeStride[1] = 3;
     attributeStride[2] = 4;
 
-    // //モデルデータ
-    // var vertex_position = [
-    //     // X,   Y,   Z
-    //      0.0, 1.0, 0.0,
-    //      1.0, 0.0, 0.0,
-    //     -1.0, 0.0, 0.0,
-    //     0.0, -1.0,  0.0
-    // ];
+    //トーラスの作成
 
-    // // 頂点の色情報を格納する配列
-    // var vertex_color = [
-    //     1.0, 0.0, 0.0, 1.0,
-    //     0.0, 1.0, 0.0, 1.0,
-    //     0.0, 0.0, 1.0, 1.0,
-    //     1.0, 1.0, 1.0, 1.0
-    // ];
-
-    // // 頂点のインデックスを格納する配列
-    // var index = [
-    //     0, 1, 2,
-    //     1, 2, 3
-    // ];
-
-    	
 	// トーラスの頂点データを生成
-	var torusData = torus(64, 64, 1.5, 3.0);
-    var vertex_position = torusData.p;
-    var vertex_normal = torusData.n;
-	var vertex_color = torusData.c;
-	var index = torusData.i;
+	var torusData = torus(64, 64, 0.5, 1.5, [0.75, 0.25, 0.25, 1.0]);
 
     //vboの生成(配列化からvboの生成)
-    const pos_vbo = create_vbo(vertex_position);
-    const normal_vbo = create_vbo(vertex_normal);
-    const color_vbo = create_vbo(vertex_color);
+    const pos_vbo = create_vbo(torusData.p);
+    const normal_vbo = create_vbo(torusData.n);
+    const color_vbo = create_vbo(torusData.c);
 
-    //vboの登録
-    set_attribute([pos_vbo, normal_vbo, color_vbo], attributeLocation, attributeStride);
+    const tourousVBO = [pos_vbo, normal_vbo, color_vbo];
 
     //iboの作成
-    const ibo = create_ibo(index);
+    const tourousIBO = create_ibo(torusData.i);
 
-    //iboをバインドして登録(attributeは使用しないので有効・登録は不要)
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    //球体の作成
+    // 球体の頂点データからVBOを生成し配列に格納
+    var sphereData = sphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
+    var sPosition = create_vbo(sphereData.p);
+    var sNormal   = create_vbo(sphereData.n);
+    var sColor    = create_vbo(sphereData.c);
+    var sphereVBO  = [sPosition, sNormal, sColor];
+
+    // 球体用IBOの生成
+    var sphereIBO = create_ibo(sphereData.i);
 
     //uniformLocationの取得
     let unitLocation = new Array();
     unitLocation[0] = gl.getUniformLocation(prg, "mvpMatrix");
     unitLocation[1] = gl.getUniformLocation(prg, "invMatrix");
-    unitLocation[2] = gl.getUniformLocation(prg, "lightDirection");
+    unitLocation[2] = gl.getUniformLocation(prg, "lightPosition");
     unitLocation[3] = gl.getUniformLocation(prg, "ambientColor");
     unitLocation[4] = gl.getUniformLocation(prg, "eyeDirection");
+    unitLocation[5] = gl.getUniformLocation(prg, "mMatrix")
 
     var count = 0;
 
     //行列計算    
     var m = new matIV();
-    //Matrixは単位行列
-    //var Matrix = m.identity(m.create());
-
-    //モデル変換行列 (x方向に1移動したもの)
-    //引数 : 元となる行列, 原点からの移動距離を表すベクトル, 演算結果を格納する行列
-    //m.translate(Matrix, [1.0, 0.0, 0.0], Matrix);
-
     // 移動・回転・拡大縮小は順序に気ｓをつけること
     // 基本的には 拡大縮小 > 回転 > 移動だが、
     // OpenGLは列オーダー（行列　× ベクトル(列)）なのでこの逆順になる
@@ -112,8 +87,8 @@ onload = () => {
     m.perspective(45, c.width / c.height, 0.1, 100, pMaterix);      //プロジェクション変換行列
     m.multiply(pMaterix, vMaterix, tmpMatrix);      //プロジェクション変換行列×ビュー変換行列をtmpに保存
 
-    //平行光源の向き
-    const lightDirection = [-0.5, 0.5, 0.5];
+    //点光源の位置
+    const lightPosition = [0, 0, 0];
 
     //環境光の色
     const ambientColor = [0.1, 0.1, 0.1, 1.0];
@@ -135,74 +110,51 @@ onload = () => {
 
         count++;
 
-        //ラジアンを求める
+        //座標を求める
         const rad = (count % 360) * Math.PI / 180;
-        
-        //モデル1は(0, 1)を中心とした円軌道の移動
-        // const x = Math.cos(rad);
-        // const y = Math.sin(rad);
-        // m.identity(mMaterix);           //mMatrixを単位行列に
-        // m.translate(mMaterix, [x, y + 1.0, 0.0], mMaterix);
+        const tx = Math.cos(rad) * 3.5;
+        const ty = Math.sin(rad) * 3.5;
+        const tz = Math.sin(rad) * 3.5;
+
+        //トーラスのVBO, IBOのセット
+        set_attribute(tourousVBO, attributeLocation, attributeStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tourousIBO);
 
         m.identity(mMaterix);
-        //(0, 1, 1)軸を中心に回転
-        m.rotate(mMaterix, rad, [0, 1, 1], mMaterix);
+        m.translate(mMaterix, [tx, -ty, -tz], mMaterix);
+        m.rotate(mMaterix, -rad, [0, 1, 1], mMaterix);
         m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        m.inverse(mMaterix, invMatrix);
 
         m.inverse(mMaterix, invMatrix);
         //座標変換行列を求める
         gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
         gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
-        gl.uniform3fv(unitLocation[2], lightDirection);
+        gl.uniform3fv(unitLocation[2], lightPosition);
         gl.uniform4fv(unitLocation[3], ambientColor);
         gl.uniform3fv(unitLocation[4], eyeDireciyon);
-        //頂点座標をもとに描画
-        // gl.drawArrays(gl.TRIANGLES, 0, 3);
-        //indexをもとに描画
-        /*
-        void gl.drawElements(mode, count, type, offset);
-        mode: レンダリングする型
-        三角形をレンダリングしたいのでgl.TRIANGLES
-        count: レンダリングすされる要素の数(3つの頂点が2つなので6でも良いが、indexの要素の数を指定するだけでok)
-        type: レンダリング時に使用するインデックスバッファの型
-        offset: オフセット値
-        */
-        gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
+        gl.uniformMatrix4fv(unitLocation[5], false, mMaterix);
 
-        //モデル1は(0, 1)を中心とした円軌道の移動
-        // const x2 = Math.cos(2.0 * Math.PI - rad);
-        // const y2 = Math.sin(2.0 * Math.PI - rad);
-        // m.identity(mMaterix);           //mMatrixを単位行列に
-        // m.translate(mMaterix, [x2, y2 + 1.0, -0.1], mMaterix);
+        gl.drawElements(gl.TRIANGLES, torusData.i.length,  gl.UNSIGNED_SHORT, 0);
 
-        // //座標変換行列を求める
-        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        // gl.drawElements(gl.TRIANGLES, index.length,  gl.UNSIGNED_SHORT, 0);
+        //球の描画設定
 
-        // //モデル2はY軸を中心回転(列オーダーなので位置行列が先)
-        // m.identity(mMaterix);
-        // //位置は(1, -1)
-        // m.translate(mMaterix, [1.0, -1.0, 0.0], mMaterix);
-        // //y軸を中心に回転
-        // m.rotate(mMaterix, rad, [0, 1, 0], mMaterix);
+        //球体のVBO, IBOのセット
+        set_attribute(sphereVBO, attributeLocation, attributeStride);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIBO);
 
-        // //座標変換行列を求める
-        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        // gl.drawArrays(gl.TRIANGLES, 0, 3);
+        m.identity(mMaterix);
+        m.translate(mMaterix, [-tx, ty, tx], mMaterix);
+        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
+        m.inverse(mMaterix, invMatrix);
 
-        // //モデル3は拡大縮小
-        // const s = Math.sin(rad) + 1.0;
-        // m.identity(mMaterix);
-        // m.translate(mMaterix, [-1.0, -1.0, 0], mMaterix);
-        // m.scale(mMaterix, [s, s, 0.0], mMaterix);
+        //uniformのセット
+        gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
+        gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
+        gl.uniformMatrix4fv(unitLocation[5], false, mMaterix);
 
-        // //座標変換行列を求める
-        // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-        // gl.drawArrays(gl.TRIANGLES, 0, 3);
-
+        gl.drawElements(gl.TRIANGLES, sphereData.i.length,  gl.UNSIGNED_SHORT, 0);
+        
 		// コンテキストの再描画
         gl.flush();
 
@@ -429,4 +381,40 @@ hsva = (h, s, v, a) => {
         color.push(r[i], g[i], b[i], a);
     }
     return color;
+}
+
+// 球体を生成する関数
+sphere = (row, column, rad, color) => {
+    var pos = new Array(), nor = new Array(),
+        col = new Array(), idx = new Array();
+    for(var i = 0; i <= row; i++){
+        var r = Math.PI / row * i;
+        var ry = Math.cos(r);
+        var rr = Math.sin(r);
+        for(var ii = 0; ii <= column; ii++){
+            var tr = Math.PI * 2 / column * ii;
+            var tx = rr * rad * Math.cos(tr);
+            var ty = ry * rad;
+            var tz = rr * rad * Math.sin(tr);
+            var rx = rr * Math.cos(tr);
+            var rz = rr * Math.sin(tr);
+            if(color){
+                var tc = color;
+            }else{
+                tc = hsva(360 / row * i, 1, 1, 1);
+            }
+            pos.push(tx, ty, tz);
+            nor.push(rx, ry, rz);
+            col.push(tc[0], tc[1], tc[2], tc[3]);
+        }
+    }
+    r = 0;
+    for(i = 0; i < row; i++){
+        for(ii = 0; ii < column; ii++){
+            r = (column + 1) * i + ii;
+            idx.push(r, r + 1, r + column + 2);
+            idx.push(r, r + column + 2, r + column + 1);
+        }
+    }
+    return {p : pos, n : nor, c : col, i : idx};
 }
