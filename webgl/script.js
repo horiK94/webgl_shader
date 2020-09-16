@@ -54,11 +54,11 @@ onload = () => {
 
     	
 	// トーラスの頂点データを生成
-	var torusData = torus(100, 100, 1, 2);
-    var vertex_position = torusData[0];
-    var vertex_normal = torusData[1];
-	var vertex_color = torusData[2];
-	var index = torusData[3];
+	var torusData = torus(64, 64, 1.5, 3.0);
+    var vertex_position = torusData.p;
+    var vertex_normal = torusData.n;
+	var vertex_color = torusData.c;
+	var index = torusData.i;
 
     //vboの生成(配列化からvboの生成)
     const pos_vbo = create_vbo(vertex_position);
@@ -374,7 +374,7 @@ create_ibo = (data) => {
 row: 円をいくつで構成するか
 column: パイプをどのくらい分割するか
 */
-torus = (row, column, irad, orad) => {
+torus = (row, column, irad, orad, color) => {
     let pos = new Array();
     let nor = new Array();
     let col = new Array();
@@ -391,9 +391,12 @@ torus = (row, column, irad, orad) => {
             let tz = (rr * irad + orad) * Math.sin(pr);
             let rx = rr * Math.cos(pr);
             let rz = rr * Math.sin(pr);
+            let tc = color;
+            if(!color){
+                tc = hsva(360 / column * j , 1, 1, 1);
+            }
             pos.push(tx, ty, tz);
             nor.push(rx, ry, rz);
-            let tc = hsva(360/ column * j, 1, 1, 1);
             col.push(tc[0], tc[1], tc[2], tc[3]);
         }
     }
@@ -405,7 +408,7 @@ torus = (row, column, irad, orad) => {
             idx.push(r + column + 1, r + column + 2, r + 1);
         }
     }
-    return [pos, nor, col, idx];
+    return {p: pos, n: nor, c: col, i: idx};
 };
 
 hsva = (h, s, v, a) => {
