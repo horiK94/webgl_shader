@@ -11,22 +11,12 @@ attribute vec3 position;
 attribute vec3 normal;      //法線情報
 attribute vec4 color;
 varying vec4 vColor;
+varying vec3 vNormal;
 uniform mat4 mvpMatrix;
-uniform mat4 invMatrix;     //モデル変換行列の逆行列
-uniform vec3 lightDirection;        // ライトの向き(光の向き)
-uniform vec4 ambientColor;      //環境光
-uniform vec3 eyeDirection;      //目の方向
 
 void main(void){
-    vec3 invLight = normalize(invMatrix * vec4(lightDirection, 0)).xyz;        //光の方向はどの位置に対しても一緒
-    vec3 invEye = normalize(invMatrix * vec4(eyeDirection, 0)).xyz;
-    vec3 halfLE = normalize(invLight + invEye);
-    float diffuse = clamp(dot(normal, invLight), 0.0, 1.0);
-    //反射光では強い光は強いままにするためべき乗で値を求める
-    float specular = pow(clamp(dot(normal, halfLE), 0.0, 1.0), 50.0);
-
-    //aを0にすると、アルファブレンディング無効時は白に近づく(全体が真っ白になってしまう)
-    vColor = color * vec4(vec3(diffuse), 1.0) + ambientColor + vec4(vec3(specular), 1.0);
+    vColor = color;
+    vNormal = normal;
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }
     </script>
@@ -34,10 +24,25 @@ void main(void){
 //数値の精度指定. 
 // floatを中精度のビット数使用
 precision mediump float;
+
+uniform mat4 invMatrix;     //モデル変換行列の逆行列
+uniform vec3 lightDirection;        // ライトの向き(光の向き)
+uniform vec4 ambientColor;      //環境光
+uniform vec3 eyeDirection;      //目の方向
 varying vec4 vColor;
+varying vec3 vNormal;
 
 void main(void){
-    gl_FragColor = vColor;
+    vec3 invLight = normalize(invMatrix * vec4(lightDirection, 0)).xyz;        //光の方向はどの位置に対しても一緒
+    vec3 invEye = normalize(invMatrix * vec4(eyeDirection, 0)).xyz;
+    vec3 halfLE = normalize(invLight + invEye);
+    float diffuse = clamp(dot(vNormal, invLight), 0.0, 1.0);
+    //反射光では強い光は強いままにするためべき乗で値を求める
+    float specular = pow(clamp(dot(vNormal, halfLE), 0.0, 1.0), 50.0);
+
+    //aを0にすると、アルファブレンディング無効時は白に近づく(全体が真っ白になってしまう)
+    vec4 destColor = vColor * vec4(vec3(diffuse), 1.0) + ambientColor + vec4(vec3(specular), 1.0);
+    gl_FragColor = destColor;
 }
     </script>
 </head>
