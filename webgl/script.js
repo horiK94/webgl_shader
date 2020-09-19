@@ -1,4 +1,5 @@
 let gl;
+// let texture;
 //jsは function hoge(){ }みたいな感じで書かないと内部の変数でエラーを吐く
 onload = () => {
     // canvasエレメントを取得
@@ -20,49 +21,56 @@ onload = () => {
     //attributeLocationの取得
     const attributeLocation = new Array();
     attributeLocation[0] = gl.getAttribLocation(prg, 'position');
-    attributeLocation[1] = gl.getAttribLocation(prg, 'normal');
-    attributeLocation[2] = gl.getAttribLocation(prg, 'color');
+    attributeLocation[1] = gl.getAttribLocation(prg, 'color');
+    attributeLocation[2] = gl.getAttribLocation(prg, 'textureCoord');
     
     //アトリビュートの要素数(今回は位置のxyzの3要素)
     const attributeStride = new Array();
     attributeStride[0] = 3;
-    attributeStride[1] = 3;
-    attributeStride[2] = 4;
+    attributeStride[1] = 4;
+    attributeStride[2] = 2;     //u, vの2つ
 
-    //トーラスの作成
+    var position = [
+        // X,   Y,   Z
+       -1.0,  1.0,  0.0,
+        1.0,  1.0,  0.0,
+       -1.0, -1.0,  0.0,
+        1.0, -1.0,  0.0
+    ];
+    // 頂点の色情報を格納する配列
+    var color = [
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
+    ];
 
-	// トーラスの頂点データを生成
-	var torusData = torus(64, 64, 0.5, 1.5, [0.75, 0.25, 0.25, 1.0]);
+    var textureCoord = [
+        0.0, 0.0,
+        1.0, 0.0,
+        0.0, 1.0,
+        1.0, 1.0
+    ]
 
-    //vboの生成(配列化からvboの生成)
-    const pos_vbo = create_vbo(torusData.p);
-    const normal_vbo = create_vbo(torusData.n);
-    const color_vbo = create_vbo(torusData.c);
+    // 頂点のインデックスを格納する配列
+    var index = [
+        0, 1, 2,
+        1, 2, 3
+    ];
 
-    const tourousVBO = [pos_vbo, normal_vbo, color_vbo];
+    const vPosition = create_vbo(position);
+    const vColor = create_vbo(color);
+    const vTextureCoord = create_vbo(textureCoord);
+    const VBOList = [vPosition, vColor, vTextureCoord];
+    const iboList = create_ibo(index);
 
-    //iboの作成
-    const tourousIBO = create_ibo(torusData.i);
-
-    //球体の作成
-    // 球体の頂点データからVBOを生成し配列に格納
-    var sphereData = sphere(64, 64, 2.0, [0.25, 0.25, 0.75, 1.0]);
-    var sPosition = create_vbo(sphereData.p);
-    var sNormal   = create_vbo(sphereData.n);
-    var sColor    = create_vbo(sphereData.c);
-    var sphereVBO  = [sPosition, sNormal, sColor];
-
-    // 球体用IBOの生成
-    var sphereIBO = create_ibo(sphereData.i);
+    set_attribute(VBOList, attributeLocation, attributeStride);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iboList);
 
     //uniformLocationの取得
     let unitLocation = new Array();
     unitLocation[0] = gl.getUniformLocation(prg, "mvpMatrix");
-    unitLocation[1] = gl.getUniformLocation(prg, "invMatrix");
-    unitLocation[2] = gl.getUniformLocation(prg, "lightPosition");
-    unitLocation[3] = gl.getUniformLocation(prg, "ambientColor");
-    unitLocation[4] = gl.getUniformLocation(prg, "eyeDirection");
-    unitLocation[5] = gl.getUniformLocation(prg, "mMatrix")
+    unitLocation[1] = gl.getUniformLocation(prg, "texture");
 
     var count = 0;
 
@@ -78,27 +86,23 @@ onload = () => {
     var pMaterix = m.identity(m.create());
     var tmpMatrix = m.identity(m.create());
     var mvpMatrix = m.identity(m.create());
-    var invMatrix = m.identity(m.create());
 
-    //目線ベクトル
-    const eyeDireciyon = [0.0, 0.0, 20.0];
-
-    m.lookAt(eyeDireciyon, [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
+    m.lookAt([0, 2.0, 5.0], [0, 0, 0], [0, 1, 0], vMaterix);      //ビュー行列の設定
     m.perspective(45, c.width / c.height, 0.1, 100, pMaterix);      //プロジェクション変換行列
     m.multiply(pMaterix, vMaterix, tmpMatrix);      //プロジェクション変換行列×ビュー変換行列をtmpに保存
 
-    //点光源の位置
-    const lightPosition = [0, 0, 0];
-
-    //環境光の色
-    const ambientColor = [0.1, 0.1, 0.1, 1.0];
-
-    //カリングの設定
-    gl.enable(gl.CULL_FACE);
     //深度テストの設定
     gl.enable(gl.DEPTH_TEST);
     //深度テストの比較方法の設定
     gl.depthFunc(gl.LEQUAL);
+
+    //有効にするテクスチャユニットの設定
+    gl.activeTexture(gl.TEXTURE0);  //0番目のユニットの有効化
+
+    var texture = null;
+
+    //テクスチャの生成
+    create_texture('texture.png');
     
     (function(){
         // canvasを黒でクリア(初期化)する
@@ -109,51 +113,22 @@ onload = () => {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         count++;
-
         //座標を求める
         const rad = (count % 360) * Math.PI / 180;
-        const tx = Math.cos(rad) * 3.5;
-        const ty = Math.sin(rad) * 3.5;
-        const tz = Math.sin(rad) * 3.5;
 
-        //トーラスのVBO, IBOのセット
-        set_attribute(tourousVBO, attributeLocation, attributeStride);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tourousIBO);
+        //textureの処理をしたいため、バインドする
+        gl.bindTexture(gl.TEXTURE_2D, texture);
 
-        m.identity(mMaterix);
-        m.translate(mMaterix, [tx, -ty, -tz], mMaterix);
-        m.rotate(mMaterix, -rad, [0, 1, 1], mMaterix);
-        m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        m.inverse(mMaterix, invMatrix);
-
-        m.inverse(mMaterix, invMatrix);
-        //座標変換行列を求める
-        gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
-        gl.uniform3fv(unitLocation[2], lightPosition);
-        gl.uniform4fv(unitLocation[3], ambientColor);
-        gl.uniform3fv(unitLocation[4], eyeDireciyon);
-        gl.uniformMatrix4fv(unitLocation[5], false, mMaterix);
-
-        gl.drawElements(gl.TRIANGLES, torusData.i.length,  gl.UNSIGNED_SHORT, 0);
-
-        //球の描画設定
-
-        //球体のVBO, IBOのセット
-        set_attribute(sphereVBO, attributeLocation, attributeStride);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereIBO);
+        //uniformのセット
+        gl.uniform1i(unitLocation[1], 0);     //textureに0という整数値を登録
 
         m.identity(mMaterix);
-        m.translate(mMaterix, [-tx, ty, tx], mMaterix);
+        m.rotate(mMaterix, rad, [0, 1, 0], mMaterix);
         m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-        m.inverse(mMaterix, invMatrix);
 
         //uniformのセット
         gl.uniformMatrix4fv(unitLocation[0], false, mvpMatrix);
-        gl.uniformMatrix4fv(unitLocation[1], false, invMatrix);
-        gl.uniformMatrix4fv(unitLocation[5], false, mMaterix);
-
-        gl.drawElements(gl.TRIANGLES, sphereData.i.length,  gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, iboList.length,  gl.UNSIGNED_SHORT, 0);
         
 		// コンテキストの再描画
         gl.flush();
@@ -161,26 +136,6 @@ onload = () => {
         // ループのために再帰呼び出し
         setTimeout(arguments.callee, 1000 / 30);
     })();
-
-    // //モデル変換行列計算
-    // m.translate(mMaterix, [1.5, 0, 0], mMaterix);
-    // //1つめの変換行列
-    // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-
-    // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-    // gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-    // m.identity(mMaterix);
-
-    // //モデル変換行列計算
-    // m.translate(mMaterix, [-1.5, 0, 0], mMaterix);
-    // //1つめの変換行列
-    // m.multiply(tmpMatrix, mMaterix, mvpMatrix);
-
-    // gl.uniformMatrix4fv(uniLocation, false, mvpMatrix);
-    // gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-    // gl.flush();
 };
 
 set_attribute = (vbo, attL, attS) => {
@@ -417,4 +372,38 @@ sphere = (row, column, rad, color) => {
         }
     }
     return {p : pos, n : nor, c : col, i : idx};
+}
+
+create_texture = (id) => {
+    //イメージオブジェクトの生成
+    let img = new Image();
+
+    //Textureに画像データを紐づけるために必要なtexImage2D関数は画像データが読み込まれてから呼ぶ必要がある
+    const elements = document.getElementById(id);
+
+    //読み込み時の処理を記述(画像読み込み前に)
+    img.onload = () => {
+        //onloadは画像データが読み込み終わったら呼ばれる
+        //テクスチャオブジェクトの生成(これでテクスチャに関する処理が可能に)
+        const tex = gl.createTexture();
+
+        //webGLにバインド(これで処理が適用されるようになる)
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+
+        //テクスチャへイメージを適用
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+
+        //ミップマップ生成
+        gl.generateMipmap(gl.TEXTURE_2D);
+
+        //テクスチャのバインドを無効
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        //生成したテクスチャオブジェクトをグローバル変数へ代入
+        //(オンロードイベントが変数を返すことができないため)
+        texture = tex;
+    };
+
+    //イメージオブジェクトのソース指定(読み込み開始)
+    img.src = "https://wgld.org/s/sample_014/texture.png";
 }

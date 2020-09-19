@@ -8,19 +8,15 @@
     <script src="minMatrix.js" type="text/javascript"></script>
     <script id="vshader" type="x-shader/x-vertex">
 attribute vec3 position;        //頂点のローカル座標
-attribute vec3 normal;      //法線情報
 attribute vec4 color;
-varying vec4 vColor;
-varying vec3 vNormal;
-varying vec3 vPosition;     //頂点のワールド座標
-uniform mat4 mMatrix;       //モデル変換行列
+attribute vec2 textureCoord;        //uv座標
 uniform mat4 mvpMatrix;
+varying vec4 vColor;
+varying vec2 vTextureCoord;
 
 void main(void){
-    vPosition = (mMatrix * vec4(position, 1.0)).xyz;
     vColor = color;
-    vNormal = normal;
-    //画面上でどこの位置か？
+    vTextureCoord = textureCoord;
     gl_Position = mvpMatrix * vec4(position, 1.0);
 }
     </script>
@@ -29,26 +25,16 @@ void main(void){
 // floatを中精度のビット数使用
 precision mediump float;
 
-uniform mat4 invMatrix;     //モデル変換行列の逆行列
-uniform vec3 lightPosition;        // ライトの位置
-uniform vec4 ambientColor;      //環境光
-uniform vec3 eyeDirection;      //目の方向
-varying vec3 vPosition;     //頂点のワールド座標
+//sampler: サンプリングされたテクスチャのこと
+uniform sampler2D texture;
 varying vec4 vColor;
-varying vec3 vNormal;
+varying vec2 vTextureCoord;
 
 void main(void){
-    vec3 lightDirection = lightPosition - vPosition;
-    vec3 invLight = normalize(invMatrix * vec4(lightDirection, 0)).xyz;
-    vec3 invEye = normalize(invMatrix * vec4(eyeDirection, 0)).xyz;
-    vec3 halfLE = normalize(invLight + invEye);
-    float diffuse = clamp(dot(vNormal, invLight), 0.0, 1.0) + 0.2;
-    //反射光では強い光は強いままにするためべき乗で値を求める
-    float specular = pow(clamp(dot(vNormal, halfLE), 0.0, 1.0), 50.0);
-
-    //aを0にすると、アルファブレンディング無効時は白に近づく(全体が真っ白になってしまう)
-    vec4 destColor = vColor * vec4(vec3(diffuse), 1.0) + ambientColor + vec4(vec3(specular), 1.0);
-    gl_FragColor = destColor;
+    //texture2D: テクスチャデータからフラグメント情報を取得する関数(テクセルの情報取得)
+    //第一引数: textureデータ, 第２引数: uv座標
+    vec4 smpColor = texture2D(texture, vTextureCoord);
+    gl_FragColor = vColor * smpColor;
 }
     </script>
 </head>
